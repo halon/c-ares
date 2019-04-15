@@ -606,13 +606,13 @@ static void process_answer(ares_channel channel, unsigned char *abuf,
   /* If we use EDNS and server answers with FORMERR without an OPT RR, the protocol
    * extension is not understood by the responder. We must retry the query
    * without EDNS enabled. */
-  if (channel->flags & ARES_FLAG_EDNS)
+  if (query->using_edns)
   {
       packetsz = channel->ednspsz;
       if (rcode == FORMERR && has_opt_rr(abuf, alen) != 1)
       {
           int qlen = (query->tcplen - 2) - EDNSFIXEDSZ;
-          channel->flags ^= ARES_FLAG_EDNS;
+          query->using_edns = 0;
           query->tcplen -= EDNSFIXEDSZ;
           query->qlen -= EDNSFIXEDSZ;
           query->tcpbuf[0] = (unsigned char)((qlen >> 8) & 0xff);
