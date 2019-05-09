@@ -77,6 +77,14 @@ void ares_free_data(void *dataptr)
             ares_free(ptr->data.srv_reply.host);
           break;
 
+        case ARES_DATATYPE_TLSA_REPLY:
+
+          if (ptr->data.tlsa_reply.next)
+            ares_free_data(ptr->data.tlsa_reply.next);
+          if (ptr->data.tlsa_reply.data)
+            free(ptr->data.tlsa_reply.data);
+          break;
+
         case ARES_DATATYPE_TXT_REPLY:
         case ARES_DATATYPE_TXT_EXT:
 
@@ -174,6 +182,15 @@ void *ares_malloc_data(ares_datatype type)
         ptr->data.srv_reply.port = 0;
         break;
 
+      case ARES_DATATYPE_TLSA_REPLY:
+        ptr->data.tlsa_reply.next = NULL;
+        ptr->data.tlsa_reply.selector = 0;
+        ptr->data.tlsa_reply.usage = 0;
+        ptr->data.tlsa_reply.mtype = 0;
+        ptr->data.tlsa_reply.data = NULL;
+        ptr->data.tlsa_reply.data_size = 0;
+        break;
+
       case ARES_DATATYPE_TXT_EXT:
         ptr->data.txt_ext.record_start = 0;
         /* FALLTHROUGH */
@@ -226,7 +243,7 @@ void *ares_malloc_data(ares_datatype type)
         ptr->data.soa_reply.retry = 0;
         ptr->data.soa_reply.expire = 0;
         ptr->data.soa_reply.minttl = 0;
-	break;
+        break;
 
       default:
         ares_free(ptr);
