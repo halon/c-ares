@@ -689,6 +689,10 @@ CARES_EXTERN int ares_parse_mx_reply(const unsigned char* abuf,
                                       int alen,
                                       struct ares_mx_reply** mx_out);
 
+CARES_EXTERN int ares_parse_ttl_from_reply(const unsigned char* abuf,
+                                      int alen,
+                                      int* ttl);
+
 CARES_EXTERN int ares_parse_txt_reply(const unsigned char* abuf,
                                       int alen,
                                       struct ares_txt_reply** txt_out);
