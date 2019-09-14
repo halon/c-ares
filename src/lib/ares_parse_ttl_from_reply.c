@@ -43,7 +43,7 @@
 int
 ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
 {
-  unsigned int qdcount, ancount, i;
+  unsigned int qdcount, ancount, nscount, rcode, i;
   const unsigned char *aptr, *vptr;
   int status, rr_type, rr_class, rr_ttl, rr_len;
   long len;
@@ -57,11 +57,13 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
     return ARES_EBADRESP;
 
   /* Fetch the question and answer count from the header. */
+  rcode = DNS_HEADER_RCODE (abuf);
   qdcount = DNS_HEADER_QDCOUNT (abuf);
   ancount = DNS_HEADER_ANCOUNT (abuf);
+  nscount = DNS_HEADER_NSCOUNT (abuf);
   if (qdcount != 1)
     return ARES_EBADRESP;
-  if (ancount == 0)
+  if (ancount == 0 && nscount == 0)
     return ARES_ENODATA;
 
   /* Expand the name from the question, and skip past the question. */
@@ -79,6 +81,7 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
 
   /* Examine each answer resource record (RR) in turn. */
   int rr_min_ttl;
+  int rr_has_ttl = 0;
   for (i = 0; i < ancount; i++)
     {
       /* Decode the RR up to the data field. */
@@ -98,8 +101,11 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
       rr_ttl = DNS_RR_TTL (aptr);
 
       /* https://tools.ietf.org/html/rfc2181#section-5.2 */
-	  if (i == 0 || rr_ttl < rr_min_ttl)
+	  if (!rr_has_ttl || rr_ttl < rr_min_ttl)
+	  {
 		  rr_min_ttl = rr_ttl;
+		  rr_has_ttl = 1;
+	  }
 
       rr_len = DNS_RR_LEN (aptr);
       aptr += RRFIXEDSZ;
@@ -116,6 +122,52 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
       /* Move on to the next record */
       aptr += rr_len;
     }
+
+  /* Examine each answer resource record (RR) in turn. */
+  for (i = 0; rcode == 3 && ancount == 0 && i < nscount; i++)
+    {
+      /* Decode the RR up to the data field. */
+      status = ares_expand_name (aptr, abuf, alen, &rr_name, &len);
+      if (status != ARES_SUCCESS)
+        {
+          break;
+        }
+      aptr += len;
+      if (aptr + RRFIXEDSZ > abuf + alen)
+        {
+          status = ARES_EBADRESP;
+          break;
+        }
+      rr_type = DNS_RR_TYPE (aptr);
+      rr_class = DNS_RR_CLASS (aptr);
+      rr_ttl = DNS_RR_TTL (aptr);
+
+      /* https://tools.ietf.org/html/rfc2181#section-5.2 */
+	  /* match SOA */
+	  if (rr_type == 6 && (!rr_has_ttl || rr_ttl < rr_min_ttl))
+	  {
+		  rr_min_ttl = rr_ttl;
+		  rr_has_ttl = 1;
+	  }
+
+      rr_len = DNS_RR_LEN (aptr);
+      aptr += RRFIXEDSZ;
+      if (aptr + rr_len > abuf + alen)
+        {
+          status = ARES_EBADRESP;
+          break;
+        }
+
+      /* Don't lose memory in the next iteration */
+      ares_free (rr_name);
+      rr_name = NULL;
+
+      /* Move on to the next record */
+      aptr += rr_len;
+    }
+
+  if (!rr_has_ttl)
+    status = ARES_ENODATA;
 
   if (hostname)
     ares_free (hostname);
