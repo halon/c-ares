@@ -140,6 +140,15 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
           break;
         }
       rr_type = DNS_RR_TYPE (aptr);
+      rr_ttl = DNS_RR_TTL (aptr);
+
+      /* https://tools.ietf.org/html/rfc2181#section-5.2 */
+	  if (!rr_has_ttl || rr_ttl < rr_min_ttl)
+	  {
+		  rr_min_ttl = rr_ttl;
+		  rr_has_ttl = 1;
+	  }
+
       rr_len = DNS_RR_LEN (aptr);
       aptr += RRFIXEDSZ;
       if (aptr + rr_len > abuf + alen)
