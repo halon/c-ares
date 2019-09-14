@@ -124,7 +124,7 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
     }
 
   /* Examine each answer resource record (RR) in turn. */
-  for (i = 0; rcode == 3 && ancount == 0 && i < nscount; i++)
+  for (i = 0; (rcode == 3 || rcode == 0) && ancount == 0 && i < nscount; i++)
     {
       /* Decode the RR up to the data field. */
       status = ares_expand_name (aptr, abuf, alen, &rr_name, &len);
