@@ -124,6 +124,7 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
     }
 
   /* Examine each answer resource record (RR) in turn. */
+  const unsigned char* aptr2 = aptr;
   for (i = 0; (rcode == 3 || rcode == 0) && ancount == 0 && i < nscount; i++)
     {
       /* Decode the RR up to the data field. */
@@ -139,17 +140,6 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
           break;
         }
       rr_type = DNS_RR_TYPE (aptr);
-      rr_class = DNS_RR_CLASS (aptr);
-      rr_ttl = DNS_RR_TTL (aptr);
-
-      /* https://tools.ietf.org/html/rfc2181#section-5.2 */
-	  /* match SOA */
-	  if (rr_type == 6 && (!rr_has_ttl || rr_ttl < rr_min_ttl))
-	  {
-		  rr_min_ttl = rr_ttl;
-		  rr_has_ttl = 1;
-	  }
-
       rr_len = DNS_RR_LEN (aptr);
       aptr += RRFIXEDSZ;
       if (aptr + rr_len > abuf + alen)
@@ -158,12 +148,46 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
           break;
         }
 
-      /* Don't lose memory in the next iteration */
       ares_free (rr_name);
       rr_name = NULL;
 
-      /* Move on to the next record */
-      aptr += rr_len;
+	  if (rr_type == 6)
+	  {
+		  status = ares__expand_name_for_response(aptr, abuf, alen, &rr_name, &len);
+		  if (status != ARES_SUCCESS)
+		  {
+			  break;
+		  }
+		  ares_free (rr_name);
+		  rr_name = NULL;
+		  aptr += len;
+
+		  status = ares__expand_name_for_response(aptr, abuf, alen, &rr_name, &len);
+		  if (status != ARES_SUCCESS)
+		  {
+			  break;
+		  }
+		  ares_free (rr_name);
+		  rr_name = NULL;
+		  aptr += len;
+		  if (aptr + 5 * 4 > abuf + alen)
+		  {
+			  status = ARES_EBADRESP;
+			  break;
+		  }
+		  rr_ttl = DNS__32BIT(aptr + 4 * 4);
+		  if (!rr_has_ttl || rr_ttl < rr_min_ttl)
+		  {
+			  rr_min_ttl = rr_ttl;
+			  rr_has_ttl = 1;
+		  }
+		  aptr += 5 * 4;
+	  }
+	  else
+	  {
+		  /* Move on to the next record */
+		  aptr += rr_len;
+	  }
     }
 
   if (!rr_has_ttl)
