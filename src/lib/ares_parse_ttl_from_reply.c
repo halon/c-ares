@@ -72,6 +72,12 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
   if (status != ARES_SUCCESS)
     return status;
 
+  if (alen <= len + HFIXEDSZ + 1)
+    {
+      ares_free (hostname);
+      return ARES_EBADRESP;
+    }
+
   if (aptr + len + QFIXEDSZ > abuf + alen)
     {
       ares_free (hostname);
