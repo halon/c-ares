@@ -168,7 +168,7 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
 
 	  if (rr_type == 6)
 	  {
-		  status = ares__expand_name_for_response(aptr, abuf, alen, &rr_name, &len);
+		  status = ares__expand_name_for_response(aptr, abuf, alen, &rr_name, &len, 0);
 		  if (status != ARES_SUCCESS)
 		  {
 			  break;
@@ -177,7 +177,7 @@ ares_parse_ttl_from_reply(const unsigned char *abuf, int alen, int* ttl)
 		  rr_name = NULL;
 		  aptr += len;
 
-		  status = ares__expand_name_for_response(aptr, abuf, alen, &rr_name, &len);
+		  status = ares__expand_name_for_response(aptr, abuf, alen, &rr_name, &len, 0);
 		  if (status != ARES_SUCCESS)
 		  {
 			  break;
